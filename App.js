@@ -10,6 +10,7 @@ import ForgotScreen from './screens/ForgotScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import AccountScreen from './screens/AccountScreen';
 import ReactionHistoryScreen from './screens/ReactionHistoryScreen';
+import SearchScreen from './screens/SearchScreen';
 
 
 export default class App extends React.Component {
@@ -33,7 +34,7 @@ const AppNavigator = createStackNavigator({
     screen: FeedScreen,
     navigationOptions: {
       headerShown:true,
-      title:'Mirrr ',
+      title:'Mirrer',
       headerStyle:{
         elevation: 0, // remove shadow on Android
         shadowOpacity: 0, // remove shadow on iOS
@@ -52,6 +53,12 @@ const AppNavigator = createStackNavigator({
   },
   Profile:{
     screen: ProfileScreen,
+    navigationOptions: {
+      headerShown:false
+    }
+  },
+  Search:{
+    screen: SearchScreen,
     navigationOptions: {
       headerShown:true,
       title:'',

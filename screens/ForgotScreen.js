@@ -78,7 +78,7 @@ const ForgotScreen = (props) => {
 
     return (
             <View style={styles.card}>
-                <Text style={styles.heading}>Mirrr</Text>
+                <Text style={styles.heading}>Mirrer</Text>
                 {fontsLoaded &&<View style={styles.form}>
                     <View style={styles.inputs}>
                         <Text style={[styles.message, {color: isError ? 'red' : 'green'}]}>{message ? getMessage() : null}</Text>

@@ -1,8 +1,9 @@
 import React, { useState ,useRef, useEffect} from 'react';
-import { View, ScrollView,  Image, Text, StyleSheet, TouchableOpacity} from 'react-native';
+import { View, RefreshControl, ScrollView,  Image, Text, StyleSheet, TouchableOpacity} from 'react-native';
 
 import * as ImagePicker from 'expo-image-picker';
 import AwesomeAlert from 'react-native-awesome-alerts';
+import SvgUri from 'react-native-svg-uri';
 import Toast from './MyToast';
 
 import {
@@ -19,10 +20,12 @@ let user = null;
 
 const FeedScreen = (props) => {
     user = props.navigation.state.params.user; //current user
-    console.log(props.navigation);
+    
     const [feed , setFeed] = useState([]); //followed user list
-    const [showAlert , setShowAlert] = useState(false); //success alert
+    const [loadingAlert,setLoadingAlert] = useState(false);
     const defaultToast = useRef(null);
+    const updateToast = useRef(null);
+    const [refreshing, setRefreshing] = useState(false);
     let [fontsLoaded] = useFonts({
         Montserrat_600SemiBold,
         Montserrat_700Bold,
@@ -30,13 +33,18 @@ const FeedScreen = (props) => {
         Montserrat_400Regular
     });
 
-    const loadFeedList = () => {
+    const onRefresh = () => {
+        setRefreshing(true);
+        loadFeedList();
+    }
+
+    const loadFeedList = async () => {
         fetch(`${API_URL}/get_users`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(user.follow_list),
+            body: JSON.stringify({email:user.email}),
         })
         .then(async res => { 
             try {
@@ -45,7 +53,9 @@ const FeedScreen = (props) => {
                     console.log(res);
                 } else {
                     setFeed(jsonRes.feed_list);
-                    
+                    user = jsonRes.user;
+                    console.log("now_user",user);
+                    setRefreshing(false);
                 }
             } catch (err) {
                 console.log(err);
@@ -80,6 +90,7 @@ const FeedScreen = (props) => {
                 } else {
                     //reload feed lit
                     loadFeedList();
+                    updateToast.current.hideToast(10);
                     defaultToast.current.showToast('Your picture has been updated with success');
                     
                 }
@@ -97,11 +108,10 @@ const FeedScreen = (props) => {
         let result = await ImagePicker.launchImageLibraryAsync({
           mediaTypes: ImagePicker.MediaTypeOptions.Images,
           allowsEditing: true,
-          aspect: [3, 5],
+          aspect: [4, 5], 
           quality: 1,
           base64:true,
         });
-
     
         if (!result.cancelled) {
             let base64Img = `data:image/jpg;base64,${result.base64}`
@@ -109,6 +119,8 @@ const FeedScreen = (props) => {
                 "file": base64Img,
                 "upload_preset": upload_preset,
             }
+            
+            updateToast.current.showToast("wait...","UPDATING",1000000);
             fetch(upload_url, {
                 body: JSON.stringify(data),
                 headers: {
@@ -139,7 +151,8 @@ const FeedScreen = (props) => {
     const selectPerson = (item) => {
         props.navigation.navigate('Profile', {
             owner: item,
-            user:user
+            user:user,
+            type:1
         });
     }
 
@@ -168,7 +181,7 @@ const FeedScreen = (props) => {
 
     return (
         <View style={styles.feedContainer}>
-            <ScrollView>
+            <ScrollView refreshControl = {<RefreshControl refreshing={refreshing} onRefresh={()=>onRefresh()}/>}>
                 {fontsLoaded && 
                     <View style={styles.container}>
                         {
@@ -179,16 +192,18 @@ const FeedScreen = (props) => {
                         
                     </View> 
                 }
+                
                 <AwesomeAlert
-                    show={showAlert}
-                    showProgress={false}
-                    title="Success"
-                    message="Your photo has updated"
-                    closeOnTouchOutside={true}
+                    show={loadingAlert}
+                    showProgress={true}
+                    title="Processing"
+                    message="Wait a moment..."
+                    closeOnTouchOutside={false}
                     closeOnHardwareBackPress={false}
                 />
         </ScrollView>
         <Toast ref = {defaultToast} backgroundColor = "#57D172" style={styles.myToast}/>
+        <Toast ref = {updateToast} textColor="#000000" backgroundColor = "#E5E5E5" style={styles.myToast}/>
        </View>
     );
 };
@@ -294,14 +309,12 @@ const styles = StyleSheet.create({
 export default FeedScreen;
 
 const goProfile = (screenProps) => {
-    console.log(screenProps)
     screenProps.navigation.navigate('Account', {
         user: user
     });
 }
 
 const goSearch = (screenProps) => {
-    console.log(screenProps)
     screenProps.navigation.navigate('Search', {
         user: user
     });
@@ -310,10 +323,16 @@ const goSearch = (screenProps) => {
 FeedScreen['navigationOptions'] = props => ({
     headerRight: () => <View style={styles.hrContainer}>
                             <TouchableOpacity onPress={()=>goSearch(props)}>
-                                <Image style={styles.menu_img} source={require('../assets/search.png')} />
+                                <SvgUri
+                                    style={styles.menu_img}
+                                    source={require('../assets/search.svg')}
+                                />
                             </TouchableOpacity>
                             <TouchableOpacity onPress={()=>goProfile(props)}>
-                                <Image style={styles.menu_img} source={require('../assets/profile.png')} />
+                                <SvgUri
+                                    style={styles.menu_img}
+                                    source={require('../assets/profile.svg')}
+                                />
                             </TouchableOpacity>
                         </View>
 })

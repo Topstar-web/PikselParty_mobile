@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "PikselParty",
-    "slug": "PikselParty",
-    "description": "PikselParty - The picture status",
+    "name": "Mirrer",
+    "slug": "Mirrer",
+    "description": "Mirrer - The picture status",
     "privacy": "public",
     "platforms": [
       "ios",
@@ -15,7 +15,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#000000"
+      "backgroundColor": "#ffffff"
     },
     "updates": {
       "fallbackToCacheTimeout": 0
@@ -27,7 +27,7 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "com.topstar1995.PikselParty"
+      "package": "com.topstar1995.Mirrer"
     }
   }
 }

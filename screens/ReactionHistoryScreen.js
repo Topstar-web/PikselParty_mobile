@@ -14,10 +14,15 @@ import { ScrollView } from 'react-native-gesture-handler';
 
 const ReactionHistoryScreen = (props) => {
     const user = props.navigation.state.params.user; //current user
-    const [type , setType] = useState(props.navigation.state.params.type); //current user
-    const [rCnt , setRCnt] = useState(props.navigation.state.params.rCnt); //current user
-    const [historyList , setHistoryList] = useState([0,0]);
+    
+    const initData = {
+        type : props.navigation.state.params.type,
+        rCnt : props.navigation.state.params.rCnt,
+        historyList:[]
+    }
+    const [data,setData] = useState(initData);
     const [value,setValue] = useState(0);
+
     let [fontsLoaded] = useFonts({
         Montserrat_600SemiBold,
         Montserrat_700Bold,
@@ -26,11 +31,12 @@ const ReactionHistoryScreen = (props) => {
     });
 
     useEffect(() => {
+        
         loadHistory();
     }, []);
 
     // load Reaction history
-    const loadHistory = async () => {
+    const loadHistory = () => {
         fetch(`${API_URL}/getReactionHistory`, {
             method: 'POST',
             headers: {
@@ -38,7 +44,6 @@ const ReactionHistoryScreen = (props) => {
             },
             body: JSON.stringify(
                 {
-                    type:type,
                     email:user.email
                 }
             ),
@@ -48,8 +53,7 @@ const ReactionHistoryScreen = (props) => {
                 const jsonRes = await res.json();
                 if (res.status !== 200) {
                 } else {
-                    setHistoryList(jsonRes.data);
-                    console.log("history",historyList);
+                    data.historyList = jsonRes.data;
                     setValue(value + 1);
                 }
                 
@@ -64,18 +68,72 @@ const ReactionHistoryScreen = (props) => {
 
     //set Active type and call loadHistory
     const loadReactionHistory = (rType)  => {
-        setType(rType); //set Active type
-        loadHistory();
+        data.type = rType; //set Active type
+        setValue(value + 1);
+        // loadHistory();
+    };
+    
+    //render full name to first & last
+    const renderName = (name) => {
+        const fl_name = name.split(' ');
+        const first_name = fl_name[0];
+        const last_name = fl_name.length > 1 ? fl_name[1]:'';
+        return (
+            <View style={styles.nameContainer}>
+                <Text style={styles.first_name}>{first_name} </Text>
+                {/* <Text style={styles.last_name}>{last_name}</Text> */}
+            </View>
+        )
+    };
+
+    const renderCount = (count) => {
+        let imgCnt = count>5?5:count;
+        let txtCnt = count>5?(count - 5):0;
+        let curImgUrl;
+        
+        switch(data.type){
+            case 1:
+                curImgUrl = require('../assets/reactions/1.png');
+                break;
+            case 2:
+                curImgUrl = require('../assets/reactions/2.png');
+                break;
+            case 3:
+                curImgUrl = require('../assets/reactions/3.png');
+                break;
+            case 4:
+                curImgUrl = require('../assets/reactions/4.png');
+                break;
+            case 5:
+                curImgUrl = require('../assets/reactions/5.png');
+                break;
+            case 6:
+                curImgUrl = require('../assets/reactions/6.png');
+                break;
+        }
+
+        var tmp = [];
+        for(let i=0;i<imgCnt;i++)
+            tmp.push(<Image key={i} style={styles.countEmojiImg} source = {curImgUrl}/>)
+        return (
+            <View style={styles.cImgContainer}>
+                {tmp}
+                <Text style={styles.countEmojiTxt}>{txtCnt > 0 ? ('+ '+txtCnt):''}</Text>
+            </View>
+        )
     };
 
     const renderItem = (item,key) => {
+        if(item._id.type != data.type) return;
         return (
             <View key={key} style={styles.historyItemContainer}>
                 <Image style={styles.photo} 
                     source={{
-                        uri: item.photo==''?default_photo:item.photo
+                        uri: item.user[0].photo==''?default_photo:item.user[0].photo
                     }}>
                 </Image>
+                {renderName(item.user[0].name)}
+                {renderCount(item.count)}
             </View>
         )
     }
@@ -83,32 +141,87 @@ const ReactionHistoryScreen = (props) => {
     return (
         <View style={styles.container}>
             <ScrollView showsHorizontalScrollIndicator={false} horizontal style={styles.reactBarContainer}>
-                {rCnt[1] > 0 && <TouchableOpacity activeOpacity={0.6} style={styles.emojiContainer} onPress={()=>loadReactionHistory(1)}>
-                        <Image style={styles.emojiImg} source={type==1?require('../assets/reactions/1.png'):require('../assets/reactions/1_0.png')} />
-                        <Text style={type==1?styles.emojiCount:styles.emojiCount_disable}>{rCnt[1] > 0?rCnt[1]:''}</Text>
+                {data.rCnt[1] > 0 && <TouchableOpacity activeOpacity={0.6} style={styles.emojiContainer} onPress={()=>loadReactionHistory(1)}>
+                        <Image style={styles.emojiImg} source={data.type==1?require('../assets/reactions/1.png'):require('../assets/reactions/1_0.png')} />
+                        <Text style={data.type==1?styles.emojiCount:styles.emojiCount_disable}>{data.rCnt[1] > 0?data.rCnt[1]:''}</Text>
+                </TouchableOpacity>}
+                {data.rCnt[2] > 0 && <TouchableOpacity activeOpacity={0.6} style={styles.emojiContainer} onPress={()=>loadReactionHistory(2)}>
+                        <Image style={styles.emojiImg} source={data.type==2?require('../assets/reactions/2.png'):require('../assets/reactions/2_0.png')} />
+                        <Text style={data.type==2?styles.emojiCount:styles.emojiCount_disable}>{data.rCnt[2] > 0?data.rCnt[2]:''}</Text>
+                </TouchableOpacity>}
+                {data.rCnt[3] > 0 && <TouchableOpacity activeOpacity={0.6} style={styles.emojiContainer} onPress={()=>loadReactionHistory(3)}>
+                        <Image style={styles.emojiImg} source={data.type==3?require('../assets/reactions/3.png'):require('../assets/reactions/3_0.png')} />
+                        <Text style={data.type==3?styles.emojiCount:styles.emojiCount_disable}>{data.rCnt[3] > 0?data.rCnt[3]:''}</Text>
+                </TouchableOpacity>}
+                {data.rCnt[4] > 0 && <TouchableOpacity activeOpacity={0.6} style={styles.emojiContainer} onPress={()=>loadReactionHistory(4)}>
+                        <Image style={styles.emojiImg} source={data.type==4?require('../assets/reactions/4.png'):require('../assets/reactions/4_0.png')} />
+                        <Text style={data.type==4?styles.emojiCount:styles.emojiCount_disable}>{data.rCnt[4] > 0?data.rCnt[4]:''}</Text>
+                </TouchableOpacity>}
+                {data.rCnt[5] > 0 && <TouchableOpacity activeOpacity={0.6} style={styles.emojiContainer} onPress={()=>loadReactionHistory(5)}>
+                        <Image style={styles.emojiImg} source={data.type==5?require('../assets/reactions/5.png'):require('../assets/reactions/5_0.png')} />
+                        <Text style={data.type==5?styles.emojiCount:styles.emojiCount_disable}>{data.rCnt[5] > 0?data.rCnt[5]:''}</Text>
+                </TouchableOpacity>}
+                {data.rCnt[6] > 0 && <TouchableOpacity activeOpacity={0.6} style={styles.emojiContainer} onPress={()=>loadReactionHistory(6)}>
+                        <Image style={styles.emojiImg} source={data.type==6?require('../assets/reactions/6.png'):require('../assets/reactions/6_0.png')} />
+                        <Text style={data.type==6?styles.emojiCount:styles.emojiCount_disable}>{data.rCnt[6] > 0?data.rCnt[6]:''}</Text>
                 </TouchableOpacity>}
             </ScrollView>
             <ScrollView style={styles.historyListContainer}>
-                {historyList.map((item,key) => renderItem(item,key))}
+                {data.historyList.map((item,key) => renderItem(item,key))}
             </ScrollView>
        </View>
     );
 };
 
 const styles = StyleSheet.create({
+    countEmojiTxt:{
+        alignItems:'center',
+        marginLeft:11,
+        fontFamily:'Montserrat_700Bold',
+        fontSize:16
+    },
+    countEmojiImg:{
+        width:22,
+        height:22,
+        resizeMode:'stretch',
+        marginLeft:5
+    },
+    cImgContainer:{
+        marginLeft:20,
+        flexDirection:'row'
+    },
     historyListContainer:{
         marginHorizontal:15,
+        marginTop:10,
         width:windowWidth
+    },
+    nameContainer:{
+        flexDirection:'row',
+        alignItems:'center',
+        marginLeft:19,
+        width:windowWidth * 0.2
     },
     historyItemContainer:{
         marginTop:10,
-        height:70,
-        width:windowWidth
+        width:windowWidth,
+        flexDirection:'row',
+        alignItems:'center'
+    },
+    first_name:{
+        fontFamily:'Montserrat_800ExtraBold',
+        fontSize:16
+    },
+    last_name:{
+        fontFamily:'Montserrat_400Regular'
     },
     photo:{
         width:40 * windowWidth / 375,
-        height:40 * windowHeight / 375,
-        borderRadius:50
+        height:40 * windowWidth / 375,
+        borderRadius:50,
+        borderWidth:2,
+        borderColor:'#EEEEEE',
+        // resizeMode:'contain'
+        
     },
     reactBarContainer:{
         height:90,

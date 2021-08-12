@@ -138,6 +138,7 @@ const AuthScreen = (props) => {
         })
         .then(async res => { 
             try {
+                console.log(res);
                 const jsonRes = await res.json();
                 if (res.status !== 200) {
                     setIsError(true);
@@ -146,14 +147,12 @@ const AuthScreen = (props) => {
                     
                     setIsError(false);
                     setMessage(jsonRes.message);
-                    if(isLogin)
-                    {
+                    
                         //save token on storage
                         _storeData(jsonRes.token);
                         //reset navigation
                         goFeed(jsonRes.user);
-                        
-                    }
+                      
                     //navigate to feed page
 
                 }
@@ -176,7 +175,7 @@ const AuthScreen = (props) => {
     
     return (
             <View style={styles.card}>
-                {fontsLoaded && <Text style={styles.heading}>Mirrr</Text>}
+                {fontsLoaded && <Text style={styles.heading}>Mirrer</Text>}
                 {fontsLoaded && <View style={styles.form}>
                     <View style={styles.inputs}>
                         <Text style={[styles.message, {color: isError ? 'red' : 'green'}]}>{message ? getMessage() : null}</Text>
@@ -195,7 +194,7 @@ const AuthScreen = (props) => {
                         /> 
                         <View style={{marginTop:85,flexDirection:'row'}}>
                             <Text style={{color:'rgba(0, 0, 0, 0.7)', fontFamily:'Montserrat_600SemiBold'}}>{isLogin ? 'new to ':'Already have an account?'}</Text>
-                            <Text style={{color:'black', fontFamily:'Montserrat_600SemiBold'}}>{isLogin ? 'Mirrr?':''}</Text>
+                            <Text style={{color:'black', fontFamily:'Montserrat_600SemiBold'}}>{isLogin ? 'Mirrer?':''}</Text>
                         </View>
                         <TouchableOpacity style={isLogin?styles.buttonAlt_signin:styles.buttonAlt_signup} onPress={onChangeHandler}>
                             <Text style={{color: isLogin ? 'white' : 'rgba(0, 0, 0, 0.5)', fontFamily:'Montserrat_600SemiBold'}}>{isLogin ? 'SIGN UP' : 'SIGN IN'}</Text>
