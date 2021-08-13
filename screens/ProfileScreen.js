@@ -1,5 +1,5 @@
 import React, { useState , useRef,useEffect} from 'react';
-import { View, Image, Text, StyleSheet,FlatList, TouchableOpacity} from 'react-native';
+import { View, Image, Text, StyleSheet, TouchableOpacity, ScrollView} from 'react-native';
 import {SingleImage} from "rn-instagram-image";
 import AwesomeAlert from 'react-native-awesome-alerts';
 import SvgUri from 'react-native-svg-uri';
@@ -50,11 +50,9 @@ const ProfileScreen = (props) => {
 
     //get Reaction Data
     useEffect(() => {
+        setLoadingAlert(true);
         getFollowList();
-        getBlockList();
-        getReaction();
         
-        setLoadingAlert(false);
     }, []);
 
     //load block list
@@ -76,6 +74,7 @@ const ProfileScreen = (props) => {
                     {
                         setIsBlock(true);
                     }
+                    getReaction();
                 }
                 
             } catch (err) {
@@ -102,7 +101,6 @@ const ProfileScreen = (props) => {
                 } else {
                     
                     const now_follow_list = jsonRes.data[0].follow_list;
-                    console.log("now_follow_list",jsonRes.data[0]);
                     now_follow_list.map((item) => {
                         if(item.name == owner.email)
                         {
@@ -111,6 +109,7 @@ const ProfileScreen = (props) => {
                                 removeNewStatus()
                         }           
                     });
+                    getBlockList();
                 }
                 
             } catch (err) {
@@ -150,7 +149,7 @@ const ProfileScreen = (props) => {
 
     const getReaction = () => {
         setLoadingAlert(true);
-        console.log(user.email);
+        
         fetch(`${API_URL}/getReaction`, {
             method: 'POST',
             headers: {
@@ -163,7 +162,6 @@ const ProfileScreen = (props) => {
                 const jsonRes = await res.json();
                 if (res.status !== 200) {
                 } else {
-                    console.log(jsonRes);
                     const reactionList = jsonRes.data;
                     flagStatus.fUser = jsonRes.fUser;
                     flagStatus.fCont = jsonRes.fCont;
@@ -217,7 +215,7 @@ const ProfileScreen = (props) => {
     };
 
     // tap to add reaction
-    const addReaction = (type) => {
+    const addReaction = async (type) => {
         if(owner.email == user.email)
         {
             if(rCnt[type] == 0) return;
@@ -345,11 +343,15 @@ const ProfileScreen = (props) => {
                 const jsonRes = await res.json();
                 if (res.status !== 200) {
                 } else {
-                    console.log(jsonRes);
+                    
                     setShowModal(false);
+                    
+                    flagStatus.fBlock = 1;
                     defaultToast.current.showToast('You have Blocked '+owner.name);
                     setFStatus(false);
-                    flagStatus.fBlock = 1;
+                    setTimeout(() => {
+                        goBack();
+                    }, 3000);  
                 }
             } catch (err) {
                 console.log(err);
@@ -377,11 +379,13 @@ const ProfileScreen = (props) => {
                 const jsonRes = await res.json();
                 if (res.status !== 200) {
                 } else {
-                    console.log("flagUser",jsonRes);
+                    flagStatus.flagUser = 1;
                     setShowModal(false);
                     defaultToast.current.showToast('You have Flagged '+owner.name);
+                    setTimeout(() => {
+                        goBack();
+                    }, 3000);  
                     setFStatus(false);
-                    flagStatus.flagUser = 1;
                 }
             } catch (err) {
                 console.log(err);
@@ -409,11 +413,13 @@ const ProfileScreen = (props) => {
                 const jsonRes = await res.json();
                 if (res.status !== 200) {
                 } else {
-                    console.log("flagUser",jsonRes);
+                    flagStatus.flagContent = 1;
                     setShowModal(false);
                     defaultToast.current.showToast('You have Flagged '+owner.name+'\'s content');
+                    setTimeout(() => {
+                        goBack();
+                    }, 3000);  
                     setFStatus(false);
-                    flagStatus.flagContent = 1;
                 }
             } catch (err) {
                 console.log(err);
@@ -425,7 +431,8 @@ const ProfileScreen = (props) => {
     };
 
     return (
-        <View style={styles.container}>
+        <View style={styles.container} contentContainerStyle={{
+            alignItems:'center'}}>
             <View style={styles.header}>
                 <TouchableOpacity style={styles.menu} onPress={() => goBack(props)}>
                     <SvgUri
@@ -448,8 +455,9 @@ const ProfileScreen = (props) => {
             </View>
             {renderName(owner.name)}
             <View style={styles.photoContainer}>
-                    {/* <SingleImage style={[styles.photo,{opacity:isBlock?0.1:1}]} imageSource={{uri: owner.photo==''?default_photo:owner.photo}}></SingleImage> */}
-                    <Image style={[styles.photo,{opacity:isBlock?0.05:1}]} source ={{uri: owner.photo==''?default_photo:owner.photo}}/>
+                    {!isBlock && <SingleImage imageSource={{uri: owner.photo==''?default_photo:owner.photo}}></SingleImage>}
+                    {isBlock && <Image style={[styles.photo,{opacity:0.05}]} source ={{uri: owner.photo==''?default_photo:owner.photo}}/>}
+                    {/* <ImageViewer style={styles.photo} imageUrls={[{url:owner.photo==''?default_photo:owner.photo}]}/> */}
                     {isBlock && <Text style={styles.blockedText}>User not available</Text>}
             </View>
             {!isBlock && <View style={styles.reactContainer}>
@@ -503,7 +511,7 @@ const ProfileScreen = (props) => {
                         {renderName_modal(owner.name)}
                         <View style={styles.swipeModalList}>
                             {fStatus && <TouchableOpacity style={styles.swipeModalItem} onPress={()=>removeFollow()}>
-                                <Text style={styles.ModalItemText}>Unfollow</Text>
+                                <Text style={styles.ModalItemText_grey}>Unfollow</Text>
                             </TouchableOpacity>}
                             {!fStatus && <TouchableOpacity style={styles.swipeModalItem} onPress={()=>addFollow()}>
                                 <Text style={styles.ModalItemText}>Follow</Text>
@@ -574,6 +582,11 @@ const styles = StyleSheet.create({
         fontFamily:'Montserrat_400Regular',
         fontSize:16
     },
+    ModalItemText_grey:{
+        color:'rgba(82, 82, 82, 1)',
+        fontFamily:'Montserrat_700Bold',
+        fontSize:16
+    },
     swipeModalItem:{
         marginTop:15
     },
@@ -621,7 +634,8 @@ const styles = StyleSheet.create({
     },
     reactContainer:{
         width:'100%',
-        marginTop:60,
+        marginTop:50,
+        height:200,
         paddingHorizontal:'10%'
     },
     emojiLineContainer:{
@@ -669,15 +683,11 @@ const styles = StyleSheet.create({
     container: {
         paddingTop:20,
         width: '100%',
-        height:'100%',
+        height:windowHeight,
         display: "flex", 
         flexDirection: "row", 
         flexWrap: "wrap",
-        backgroundColor:'white',
-        fontFamily:'Montserrat',
-        fontStyle:'normal',
-        marginBottom:50,
-        alignItems:'center'
+        backgroundColor:'white'
     },
     header: {
         flexDirection:'row',
@@ -699,15 +709,12 @@ const styles = StyleSheet.create({
         alignItems:'center'
     },
     photo:{
-        width:windowWidth,
-        height:windowWidth,
-        resizeMode:'stretch',
-        marginTop:16
+        // resizeMode:'stretch'
     },
     photoContainer:{
         width:'100%',
-        height:'60%',
-        marginTop:16,
+        height:windowHeight - 360,
+        marginTop:40,
         alignItems:'center',
         justifyContent:'center'
     }

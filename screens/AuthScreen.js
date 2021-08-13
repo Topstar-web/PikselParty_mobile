@@ -124,10 +124,11 @@ const AuthScreen = (props) => {
         setShowAlert(true);
         setMessage('');
         //submit
+        const capName = name.toUpperCase();
         const payload = {
             email,
             password,
-            name
+            capName
         };
         fetch(`${API_URL}/${isLogin ? 'signin' : 'signup'}`, {
             method: 'POST',

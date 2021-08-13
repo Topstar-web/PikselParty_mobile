@@ -1,7 +1,8 @@
-import React, { useState , useEffect} from 'react';
-import { View, ScrollView, TextInput,FlatList, Image, Text, StyleSheet, TouchableOpacity} from 'react-native';
+import React, { useState ,useRef, useEffect} from 'react';
+import { View,FlatList, Image, Text, StyleSheet, TouchableOpacity} from 'react-native';
 import AwesomeAlert from 'react-native-awesome-alerts';
-import SvgUri from 'react-native-svg-uri';
+import Toast from './MyToast';
+
 import {
     useFonts,
     Montserrat_600SemiBold,
@@ -13,19 +14,14 @@ import {
 
 import {API_URL, default_photo, windowHeight, windowWidth} from '../config/config';
 
-let user = null;
-
-const SearchScreen = (props) => {
-    user = props.navigation.state.params.user; //current user
-    const [data,setData] = useState({
-        search:'',
-        userList:[]
-    });
+const BlockListScreen = (props) => {
+    const user = props.navigation.state.params.user; //current user
 
     const [blockList,setBlockList] = useState([]);
 
     const [loadingAlert,setLoadingAlert] = useState(false);
 
+    const defaultToast = useRef(null);
     let [fontsLoaded] = useFonts({
         Montserrat_600SemiBold,
         Montserrat_700Bold,
@@ -43,7 +39,7 @@ const SearchScreen = (props) => {
     
     //load block list
     const getBlockList = () =>{
-        fetch(`${API_URL}/getUser`, {
+        fetch(`${API_URL}/getBlockList`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -52,33 +48,14 @@ const SearchScreen = (props) => {
         })
         .then(async res => { 
             try {
+
                 const jsonRes = await res.json();
                 if (res.status !== 200) {
                 } else {
-                    setBlockList(jsonRes.data[0].block_list);
+                    setBlockList(jsonRes.data[0].user);
+                    console.log("blockList",blockList);
+                    setLoadingAlert(false);
                 }
-                fetch(`${API_URL}/getUserList`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                })
-                .then(async res => { 
-                    try {
-                        const jsonRes = await res.json();
-                        if (res.status !== 200) {
-                        } else {
-                            data.userList = jsonRes.data;
-                            setLoadingAlert(false);
-                        }
-                        
-                    } catch (err) {
-                        console.log(err);
-                    };
-                })
-                .catch(err => {
-                    console.log(err);
-                });
                 
             } catch (err) {
                 console.log(err);
@@ -102,30 +79,27 @@ const SearchScreen = (props) => {
         )
     };
 
-    // on tap on list
-    const onTapUser = (email) => {
-        setLoadingAlert(true);
-        fetch(`${API_URL}/getUser`, {
+    const unblockUser = (email) => {
+        fetch(`${API_URL}/unBlockUser`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({email:email})
+            body: JSON.stringify({
+                email:user.email,
+                blocked_email:email
+            })
         })
         .then(async res => { 
             try {
                 const jsonRes = await res.json();
                 if (res.status !== 200) {
                 } else {
-                    const tapUser = jsonRes.data;
-                    setLoadingAlert(false);
-
-                    props.navigation.navigate('Profile', {
-                        owner: tapUser[0],
-                        user:user
-                    });
+                    console.log("blockList",jsonRes);
+                    
+                    defaultToast.current.showToast("Unblocked Success.");
+                    getBlockList();
                 }
-                
             } catch (err) {
                 console.log(err);
             };
@@ -137,28 +111,26 @@ const SearchScreen = (props) => {
 
     return (
         <View style={styles.container}>
-            <View style={styles.searchContainer}>
-                <TextInput style={styles.searchInput} onChangeText={text=>{setData({...data,search:text})}} placeholder="Search a user" value={data.search}/>
-            </View>
 
             <FlatList
                 style={styles.searchUserListContainer}
-                data={data.userList}
+                data={blockList}
                 renderItem={({ item }) => {
-                    if(item.name && item.name.toLowerCase().includes(data.search.toLowerCase()) && item.email != user.email && !blockList.includes(item.email))
-                    {
                         return (
-                            <TouchableOpacity style={styles.historyItemContainer} onPress={()=>onTapUser(item.email)}>
-                                <Image style={styles.photo} 
-                                    source={{
-                                        uri: item.photo==''?default_photo:item.photo
-                                    }}>
-                                </Image>
-                                {renderName(item.name)}
+                            <TouchableOpacity style={styles.historyItemContainer}>
+                                <View style={{flexDirection:'row'}}>
+                                    <Image style={styles.photo} 
+                                        source={{
+                                            uri: item.photo==''?default_photo:item.photo
+                                        }}>
+                                    </Image>
+                                    {renderName(item.name)}
+                                </View>
+                                <TouchableOpacity style={styles.unblockContainer} onPress={()=>unblockUser(item.email)}>
+                                    <Text style={styles.unblockButton}>UNBLOCK</Text>
+                                </TouchableOpacity>
                             </TouchableOpacity>
-                        )
-                    }
-                    
+                        )                    
                 }}
                 keyExtractor={(item) => "" + item.email}
             />
@@ -170,11 +142,24 @@ const SearchScreen = (props) => {
                 closeOnTouchOutside={false}
                 closeOnHardwareBackPress={false}
             />
+            <Toast ref = {defaultToast} backgroundColor = "#57D172" style={styles.myToast}/>
        </View>
     );
 };
 
 const styles = StyleSheet.create({
+    unblockContainer:{
+        borderWidth:1,
+        borderColor:'rgba(0, 0, 0, 0.3)',
+        width:87,
+        height:33,
+        alignItems:'center',
+        justifyContent:'center'
+    },
+    unblockButton:{
+        fontSize:12,
+        fontFamily:'Montserrat_500Medium'
+    },
     container: {
         paddingTop:25,
         width: '100%',
@@ -187,7 +172,6 @@ const styles = StyleSheet.create({
         alignItems:'center'
     },
     searchUserListContainer:{
-        marginTop:30,
         marginLeft:21,
         height:windowHeight - 180
     },
@@ -198,9 +182,10 @@ const styles = StyleSheet.create({
     },
     historyItemContainer:{
         marginTop:12,
-        width:windowWidth,
+        width:windowWidth - 40,
         flexDirection:'row',
-        alignItems:'center'
+        alignItems:'center',
+        justifyContent:'space-between'
     },
     first_name:{
         fontFamily:'Montserrat_800ExtraBold',
@@ -239,35 +224,4 @@ const styles = StyleSheet.create({
     }
 });
 
-export default SearchScreen;
-
-const goFeed = (screenProps) => {
-    screenProps.navigation.navigate('Feed', {
-        user: user
-    });
-}
-
-const goUserProfile = (screenProps) => {
-    screenProps.navigation.navigate('Account', {
-        user: user
-    });
-}
-
-SearchScreen['navigationOptions'] = props => ({
-    headerLeft: () => <View style={styles.headerLeftContainer}>
-                            <TouchableOpacity style={styles.menu} onPress={() => goFeed(props)}>
-                                <SvgUri
-                                    style={styles.menu_img}
-                                    source={require('../assets/feed.svg')}
-                                />
-                            </TouchableOpacity>
-                        </View>,
-    headerRight: () => <View style={styles.headerRightContainer}>
-                            <TouchableOpacity onPress={()=>goUserProfile(props)}>
-                                <SvgUri
-                                    style={styles.menu_img}
-                                    source={require('../assets/profile.svg')}
-                                />
-                            </TouchableOpacity>
-                        </View>
-})
+export default BlockListScreen;

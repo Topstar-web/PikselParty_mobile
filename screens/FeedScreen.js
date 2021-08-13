@@ -54,7 +54,6 @@ const FeedScreen = (props) => {
                 } else {
                     setFeed(jsonRes.feed_list);
                     user = jsonRes.user;
-                    console.log("now_user",user);
                     setRefreshing(false);
                 }
             } catch (err) {
@@ -65,9 +64,19 @@ const FeedScreen = (props) => {
             console.log(err);
         });
     }
+    
+    
+    const unsubscribe = props.navigation.addListener('didFocus', () => {
+        // loadFeedList();
+        unsubscribe;
+    });
+    
     //get followed user list
     useEffect(() => {
         loadFeedList();
+        return () => {
+            unsubscribe;
+        }
     }, []);
 
     // on update my photo

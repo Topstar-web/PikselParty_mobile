@@ -9,6 +9,10 @@ import FeedScreen from './screens/FeedScreen';
 import ForgotScreen from './screens/ForgotScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import AccountScreen from './screens/AccountScreen';
+import UserProfileScreen from './screens/UserProfileScreen';
+import ChangePasswordScreen from './screens/ChangePasswordScreen';
+import GeneralScreen from './screens/GeneralScreen';
+import BlockListScreen from './screens/BlockListScreen';
 import ReactionHistoryScreen from './screens/ReactionHistoryScreen';
 import SearchScreen from './screens/SearchScreen';
 
@@ -72,6 +76,50 @@ const AppNavigator = createStackNavigator({
     screen: AccountScreen,
     navigationOptions: {
       headerShown:true,
+      headerStyle:{
+        elevation: 0, // remove shadow on Android
+        shadowOpacity: 0, // remove shadow on iOS
+      }
+    }
+  },
+  UserProfile:{
+    screen: UserProfileScreen,
+    navigationOptions: {
+      headerShown:true,
+      title:'PROFILE',
+      headerStyle:{
+        elevation: 0, // remove shadow on Android
+        shadowOpacity: 0, // remove shadow on iOS
+      }
+    }
+  },
+  General:{
+    screen: GeneralScreen,
+    navigationOptions: {
+      headerShown:true,
+      title:'GENERAL',
+      headerStyle:{
+        elevation: 0, // remove shadow on Android
+        shadowOpacity: 0, // remove shadow on iOS
+      }
+    }
+  },
+  BlockList:{
+    screen: BlockListScreen,
+    navigationOptions: {
+      headerShown:true,
+      title:'BLOCKED USERS',
+      headerStyle:{
+        elevation: 0, // remove shadow on Android
+        shadowOpacity: 0, // remove shadow on iOS
+      }
+    }
+  },
+  ChangePassword:{
+    screen: ChangePasswordScreen,
+    navigationOptions: {
+      headerShown:true,
+      title:'CHANGE PASSWORD',
       headerStyle:{
         elevation: 0, // remove shadow on Android
         shadowOpacity: 0, // remove shadow on iOS
