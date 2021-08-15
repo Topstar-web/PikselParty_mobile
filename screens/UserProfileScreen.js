@@ -3,6 +3,8 @@ import { View,  Switch, Text, StyleSheet, TouchableOpacity, TextInput} from 'rea
 
 import Toast from './MyToast';
 
+import { useSelector , useDispatch } from 'react-redux';
+import { setUser } from '../store/actions/index'
 import {
     useFonts,
     Montserrat_600SemiBold,
@@ -15,7 +17,9 @@ import { ScrollView } from 'react-native-gesture-handler';
 
 import {API_URL ,STORAGE_KEY, windowWidth,windowHeight} from '../config/config';
 const UserProfileScreen = (props) => {
-    const user = props.navigation.state.params.user; //current user
+    const user = useSelector((state) => state.user.user); //current user
+    const dispatch = useDispatch();
+
     let [fontsLoaded] = useFonts({ 
         Montserrat_600SemiBold,
         Montserrat_700Bold,
@@ -42,7 +46,9 @@ const UserProfileScreen = (props) => {
         .then(async res => { 
             try {
                 // const jsonRes = await res.json();
-                
+                user.name = userName.toUpperCase();
+                user.is_public = userType;
+                dispatch(setUser(user));
                 console.log(res.status);
                 if (res.status !== 200) {
                 } else {

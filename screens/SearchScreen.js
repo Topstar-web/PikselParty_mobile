@@ -11,18 +11,20 @@ import {
     Montserrat_500Medium
   } from '@expo-google-fonts/montserrat';
 
+import { useSelector  } from 'react-redux';
 import {API_URL, default_photo, windowHeight, windowWidth} from '../config/config';
 
 let user = null;
 
 const SearchScreen = (props) => {
-    user = props.navigation.state.params.user; //current user
+    user = useSelector((state)=>state.user.user);
+    console.log(user);
     const [data,setData] = useState({
         search:'',
         userList:[]
     });
 
-    const [blockList,setBlockList] = useState([]);
+    const [blockList,setBlockList] = useState(user.block_list);
 
     const [loadingAlert,setLoadingAlert] = useState(false);
 
@@ -37,48 +39,26 @@ const SearchScreen = (props) => {
     //load whole user list at first
     useEffect(() => {
         setLoadingAlert(true);
-        getBlockList();
+        getUserList();
         
     }, []);  
     
     //load block list
-    const getBlockList = () =>{
-        fetch(`${API_URL}/getUser`, {
+    const getUserList = () =>{
+        fetch(`${API_URL}/getUserList`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({email:user.email})
+            }
         })
         .then(async res => { 
             try {
                 const jsonRes = await res.json();
                 if (res.status !== 200) {
                 } else {
-                    setBlockList(jsonRes.data[0].block_list);
+                    data.userList = jsonRes.data;
+                    setLoadingAlert(false);
                 }
-                fetch(`${API_URL}/getUserList`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                })
-                .then(async res => { 
-                    try {
-                        const jsonRes = await res.json();
-                        if (res.status !== 200) {
-                        } else {
-                            data.userList = jsonRes.data;
-                            setLoadingAlert(false);
-                        }
-                        
-                    } catch (err) {
-                        console.log(err);
-                    };
-                })
-                .catch(err => {
-                    console.log(err);
-                });
                 
             } catch (err) {
                 console.log(err);
@@ -86,7 +66,7 @@ const SearchScreen = (props) => {
         })
         .catch(err => {
             console.log(err);
-        });
+        });        
     }
 
     //render full name to first & last
@@ -121,8 +101,7 @@ const SearchScreen = (props) => {
                     setLoadingAlert(false);
 
                     props.navigation.navigate('Profile', {
-                        owner: tapUser[0],
-                        user:user
+                        owner: tapUser[0]
                     });
                 }
                 
@@ -242,14 +221,12 @@ const styles = StyleSheet.create({
 export default SearchScreen;
 
 const goFeed = (screenProps) => {
-    screenProps.navigation.navigate('Feed', {
-        user: user
-    });
+    screenProps.navigation.navigate('Feed');
 }
 
 const goUserProfile = (screenProps) => {
     screenProps.navigation.navigate('Account', {
-        user: user
+        title: user.name
     });
 }
 

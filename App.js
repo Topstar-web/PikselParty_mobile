@@ -15,11 +15,19 @@ import GeneralScreen from './screens/GeneralScreen';
 import BlockListScreen from './screens/BlockListScreen';
 import ReactionHistoryScreen from './screens/ReactionHistoryScreen';
 import SearchScreen from './screens/SearchScreen';
+import { Provider } from 'react-redux';
 
+import configureStore from './store/configureStore';
+
+const store = configureStore()
 
 export default class App extends React.Component {
   render() {
-    return <AppContainer />;
+    return (
+      <Provider store = { store }>
+          <AppContainer />
+      </Provider>
+    )
   }
 }
 

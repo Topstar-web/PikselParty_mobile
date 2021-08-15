@@ -6,6 +6,8 @@ import SvgUri from 'react-native-svg-uri';
 import SwipeDownModal from 'react-native-swipe-down';
 import Toast from './MyToast';
 
+import { useSelector , useDispatch } from 'react-redux';
+import { setUser } from '../store/actions/index'
 import {
     useFonts,
     Montserrat_600SemiBold,
@@ -20,7 +22,10 @@ let user = null;
 let owner = null;
 
 const ProfileScreen = (props) => {
-    user = props.navigation.state.params.user; //current user
+    user = useSelector((state) => state.user.user);
+    console.log(user);
+    const dispatch = useDispatch();
+    
     owner = props.navigation.state.params.owner; //profile owner
     
     const defaultToast = useRef(null);
@@ -51,75 +56,8 @@ const ProfileScreen = (props) => {
     //get Reaction Data
     useEffect(() => {
         setLoadingAlert(true);
-        getFollowList();
-        
+        getReaction();
     }, []);
-
-    //load block list
-    const getBlockList = () =>{
-        fetch(`${API_URL}/getUser`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({email:owner.email})
-        })
-        .then(async res => { 
-            try {
-                const jsonRes = await res.json();
-                if (res.status !== 200) {
-                } else {
-                    const block_list = jsonRes.data[0].block_list;
-                    if(block_list.includes(user.email))
-                    {
-                        setIsBlock(true);
-                    }
-                    getReaction();
-                }
-                
-            } catch (err) {
-                console.log(err);
-            };
-        })
-        .catch(err => {
-            console.log(err);
-        });
-    }
-
-    const getFollowList = () => {
-        fetch(`${API_URL}/getUser`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({email:user.email}),
-        })
-        .then(async res => { 
-            try {
-                const jsonRes = await res.json();
-                if (res.status !== 200) {
-                } else {
-                    
-                    const now_follow_list = jsonRes.data[0].follow_list;
-                    now_follow_list.map((item) => {
-                        if(item.name == owner.email)
-                        {
-                            setFStatus(true);
-                            if(item.new)
-                                removeNewStatus()
-                        }           
-                    });
-                    getBlockList();
-                }
-                
-            } catch (err) {
-                console.log(err);
-            };
-        })
-        .catch(err => {
-            console.log(err);
-        });
-    }
 
     // set new status false
     const removeNewStatus = () => {
@@ -135,7 +73,6 @@ const ProfileScreen = (props) => {
                 const jsonRes = await res.json();
                 if (res.status !== 200) {
                 } else {
-                    
                 }
                 
             } catch (err) {
@@ -148,7 +85,6 @@ const ProfileScreen = (props) => {
     }
 
     const getReaction = () => {
-        setLoadingAlert(true);
         
         fetch(`${API_URL}/getReaction`, {
             method: 'POST',
@@ -169,6 +105,19 @@ const ProfileScreen = (props) => {
                         rCnt[item.type] = rCnt[item.type] + 1;
                     });
                     setValue(value + 1);
+
+                    user.follow_list.map((item) => {
+                        if(item.name == owner.email)
+                        {
+                            setFStatus(true);
+                            if(item.new)
+                            {
+                                item.new = false;
+                                removeNewStatus()
+                            }
+                        }           
+                    });
+
                     setLoadingAlert(false);
                 }
                 
@@ -256,14 +205,12 @@ const ProfileScreen = (props) => {
     };
 
     const goBack = () => {
-        props.navigation.navigate('Feed', {
-            user: user
-        });
+        props.navigation.navigate('Feed');
     };
     
     const goUserProfile = () => {
         props.navigation.navigate('Account', {
-            user: user
+            title: user.name
         });
     };
 
@@ -285,6 +232,8 @@ const ProfileScreen = (props) => {
                 } else {
                     setShowModal(false);
                     defaultToast.current.showToast('You have followed '+owner.name);
+                    user.follow_list.push({name:owner.email,new:false});
+                    dispatch(setUser(user));
                     setFStatus(true);
                 }
             } catch (err) {
@@ -345,7 +294,8 @@ const ProfileScreen = (props) => {
                 } else {
                     
                     setShowModal(false);
-                    
+                    user.block_list.push(owner.email);
+                    dispatch(setUser(user));
                     flagStatus.fBlock = 1;
                     defaultToast.current.showToast('You have Blocked '+owner.name);
                     setFStatus(false);
@@ -636,7 +586,8 @@ const styles = StyleSheet.create({
         width:'100%',
         marginTop:50,
         height:200,
-        paddingHorizontal:'10%'
+        paddingHorizontal:'10%',
+        backgroundColor:'white'
     },
     emojiLineContainer:{
         flexDirection:'row',

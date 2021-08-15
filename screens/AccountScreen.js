@@ -1,9 +1,10 @@
-import React, { useEffect} from 'react';
+import React, {useState, useEffect} from 'react';
 import { View,   Text, StyleSheet, TouchableOpacity} from 'react-native';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationActions, StackActions ,} from 'react-navigation';
 import SvgUri from 'react-native-svg-uri';
+import { useSelector } from 'react-redux';
 
 import {
     useFonts,
@@ -17,7 +18,9 @@ import { ScrollView } from 'react-native-gesture-handler';
 
 import {API_URL ,STORAGE_KEY, windowWidth,windowHeight} from '../config/config';
 const AccountScreen = (props) => {
-    const user = props.navigation.state.params.user; //current user
+    const user = useSelector((state) => state.user.user);
+    const [userName,setUserName] = useState(user.name);
+    
     let [fontsLoaded] = useFonts({
         Montserrat_600SemiBold,
         Montserrat_700Bold,
@@ -26,8 +29,8 @@ const AccountScreen = (props) => {
     });
     //get Profile Data
     useEffect(() => {
-
-    }, []);
+        props.navigation.setParams({title:userName})
+    }, [userName]);
 
     const onLogout = async () => {
         try {
@@ -49,14 +52,10 @@ const AccountScreen = (props) => {
     };
 
     const goUserProfile = () => {
-        props.navigation.navigate('UserProfile', {
-            user: user
-        });
+        props.navigation.navigate('UserProfile');
     };
     const goUserGeneral = () => {
-        props.navigation.navigate('General', {
-            user: user
-        });
+        props.navigation.navigate('General');
     };
 
     return (
@@ -137,5 +136,5 @@ const styles = StyleSheet.create({
 export default AccountScreen;
 
 AccountScreen['navigationOptions'] = props => ({
-    title:props.navigation.state.params.user.name
+    title:props.navigation.state.params.title
 })

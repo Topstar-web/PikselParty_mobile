@@ -2,6 +2,8 @@ import React, { useState , useEffect} from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationActions, StackActions } from 'react-navigation';
+import { useSelector , useDispatch } from 'react-redux';
+import { setUser } from '../store/actions/index'
 
 import {
     useFonts,
@@ -18,6 +20,8 @@ const AuthScreen = (props) => {
     const [name, setName] = useState('');
     const [password, setPassword] = useState('');
 
+    const store_user = useSelector((state) => state.user.user);
+    const dispatch = useDispatch()
     const [isError, setIsError] = useState(false);
     const [message, setMessage] = useState('');
     const [isLogin, setIsLogin] = useState(true);
@@ -37,9 +41,11 @@ const AuthScreen = (props) => {
     };
 
     const goFeed = (cur_user) => {
+
+        dispatch(setUser(cur_user));
         const resetAction = StackActions.reset({
             index: 0,
-            actions: [NavigationActions.navigate({ routeName: 'Feed' , params:{user:cur_user}})],
+            actions: [NavigationActions.navigate({ routeName: 'Feed'})],
         });
 
         props.navigation.dispatch(resetAction); 
@@ -85,12 +91,13 @@ const AuthScreen = (props) => {
                     setShowAlert(false);
                 })
                 .catch(err => {
-                    console.log(err);
+                    setShowAlert(false);
                 });
             }      
             setShowAlert(false);
             // }
         } catch(e) {
+            setShowAlert(false);
         // error reading value
         }
     }

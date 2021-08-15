@@ -2,7 +2,8 @@ import React, { useState ,useRef, useEffect} from 'react';
 import { View,FlatList, Image, Text, StyleSheet, TouchableOpacity} from 'react-native';
 import AwesomeAlert from 'react-native-awesome-alerts';
 import Toast from './MyToast';
-
+import { useSelector , useDispatch } from 'react-redux';
+import { setUser } from '../store/actions/index'
 import {
     useFonts,
     Montserrat_600SemiBold,
@@ -15,8 +16,8 @@ import {
 import {API_URL, default_photo, windowHeight, windowWidth} from '../config/config';
 
 const BlockListScreen = (props) => {
-    const user = props.navigation.state.params.user; //current user
-
+    const user = useSelector((state) => state.user.user); //current user
+    const dispatch = useDispatch();
     const [blockList,setBlockList] = useState([]);
 
     const [loadingAlert,setLoadingAlert] = useState(false);
@@ -53,7 +54,6 @@ const BlockListScreen = (props) => {
                 if (res.status !== 200) {
                 } else {
                     setBlockList(jsonRes.data[0].user);
-                    console.log("blockList",blockList);
                     setLoadingAlert(false);
                 }
                 
@@ -96,7 +96,12 @@ const BlockListScreen = (props) => {
                 if (res.status !== 200) {
                 } else {
                     console.log("blockList",jsonRes);
-                    
+                    const index = user.block_list.indexOf(email);
+                    if(index > -1)
+                    {
+                        user.block_list.splice(index,1);
+                        dispatch(setUser(user));
+                    }
                     defaultToast.current.showToast("Unblocked Success.");
                     getBlockList();
                 }

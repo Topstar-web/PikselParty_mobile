@@ -5,7 +5,8 @@ import * as ImagePicker from 'expo-image-picker';
 import AwesomeAlert from 'react-native-awesome-alerts';
 import SvgUri from 'react-native-svg-uri';
 import Toast from './MyToast';
-
+import { useSelector , useDispatch } from 'react-redux';
+import { setUser } from '../store/actions/index'
 import {
     useFonts,
     Montserrat_600SemiBold,
@@ -19,13 +20,14 @@ import {API_URL , default_photo, upload_url, upload_preset} from '../config/conf
 let user = null;
 
 const FeedScreen = (props) => {
-    user = props.navigation.state.params.user; //current user
-    
+    user = useSelector((state) => state.user.user);
+    const dispatch = useDispatch();
     const [feed , setFeed] = useState([]); //followed user list
     const [loadingAlert,setLoadingAlert] = useState(false);
     const defaultToast = useRef(null);
     const updateToast = useRef(null);
     const [refreshing, setRefreshing] = useState(false);
+
     let [fontsLoaded] = useFonts({
         Montserrat_600SemiBold,
         Montserrat_700Bold,
@@ -39,6 +41,7 @@ const FeedScreen = (props) => {
     }
 
     const loadFeedList = async () => {
+        console.log("load_feed_list")
         fetch(`${API_URL}/get_users`, {
             method: 'POST',
             headers: {
@@ -53,7 +56,6 @@ const FeedScreen = (props) => {
                     console.log(res);
                 } else {
                     setFeed(jsonRes.feed_list);
-                    user = jsonRes.user;
                     setRefreshing(false);
                 }
             } catch (err) {
@@ -66,14 +68,16 @@ const FeedScreen = (props) => {
     }
     
     
-    const unsubscribe = props.navigation.addListener('didFocus', () => {
-        // loadFeedList();
-        unsubscribe;
-    });
+    
     
     //get followed user list
     useEffect(() => {
         loadFeedList();
+        const unsubscribe = props.navigation.addListener('didFocus', () => {
+            // loadFeedList();
+            console.log("didFocus");
+            loadFeedList();
+        });
         return () => {
             unsubscribe;
         }
@@ -98,6 +102,8 @@ const FeedScreen = (props) => {
                 if (res.status !== 200) {
                 } else {
                     //reload feed lit
+                    user.photo = secure_url;
+                    dispatch(setUser(user));
                     loadFeedList();
                     updateToast.current.hideToast(10);
                     defaultToast.current.showToast('Your picture has been updated with success');
@@ -159,9 +165,7 @@ const FeedScreen = (props) => {
     //go to profile page
     const selectPerson = (item) => {
         props.navigation.navigate('Profile', {
-            owner: item,
-            user:user,
-            type:1
+            owner: item
         });
     }
 
@@ -318,15 +322,11 @@ const styles = StyleSheet.create({
 export default FeedScreen;
 
 const goProfile = (screenProps) => {
-    screenProps.navigation.navigate('Account', {
-        user: user
-    });
+    screenProps.navigation.navigate('Account',{title:user.name});
 }
 
 const goSearch = (screenProps) => {
-    screenProps.navigation.navigate('Search', {
-        user: user
-    });
+    screenProps.navigation.navigate('Search');
 }
 
 FeedScreen['navigationOptions'] = props => ({

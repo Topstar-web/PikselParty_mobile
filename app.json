@@ -24,7 +24,8 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.topstar1995.Mirrer"
     },
     "android": {
       "package": "com.topstar1995.Mirrer"

@@ -5,6 +5,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationActions, StackActions ,} from 'react-navigation';
 import Toast from './MyToast';
 
+import { useSelector } from 'react-redux';
+
 import {
     useFonts,
     Montserrat_600SemiBold,
@@ -17,7 +19,7 @@ import { ScrollView } from 'react-native-gesture-handler';
 
 import {API_URL ,STORAGE_KEY, windowWidth,windowHeight} from '../config/config';
 const GeneralScreen = (props) => {
-    const user = props.navigation.state.params.user; //current user
+    const user = useSelector((state) => state.user.user); //current user
     let [fontsLoaded] = useFonts({ 
         Montserrat_600SemiBold,
         Montserrat_700Bold,
@@ -76,14 +78,10 @@ const GeneralScreen = (props) => {
     };
 
     const goChangePassword = () => {
-        props.navigation.navigate('ChangePassword', {
-            user:user
-        });
+        props.navigation.navigate('ChangePassword');
     }
     const goBlockList = () => {
-        props.navigation.navigate('BlockList', {
-            user:user
-        });
+        props.navigation.navigate('BlockList');
     }
 
     return (
