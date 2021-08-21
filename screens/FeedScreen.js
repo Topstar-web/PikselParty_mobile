@@ -7,15 +7,18 @@ import SvgUri from 'react-native-svg-uri';
 import Toast from './MyToast';
 import { useSelector , useDispatch } from 'react-redux';
 import { setUser } from '../store/actions/index'
+import { LinearGradient } from 'expo-linear-gradient';
+import io from "socket.io-client";
 import {
     useFonts,
     Montserrat_600SemiBold,
     Montserrat_700Bold,
     Montserrat_800ExtraBold,
+    Montserrat_900Black,
     Montserrat_400Regular
   } from '@expo-google-fonts/montserrat';
   
-import {API_URL , default_photo, upload_url, upload_preset} from '../config/config';
+import {API_URL,SOCKET_URL , default_photo, upload_url, upload_preset, windowWidth} from '../config/config';
 
 let user = null;
 
@@ -26,23 +29,27 @@ const FeedScreen = (props) => {
     const [loadingAlert,setLoadingAlert] = useState(false);
     const defaultToast = useRef(null);
     const updateToast = useRef(null);
-    const [refreshing, setRefreshing] = useState(false);
+    const [refreshing, setRefreshing] = useState(true);
+
+    let socket = null;
+
+    const [newMsg , setNewMsg] = useState(user.noti_status);
 
     let [fontsLoaded] = useFonts({
         Montserrat_600SemiBold,
         Montserrat_700Bold,
         Montserrat_800ExtraBold,
+        Montserrat_900Black,
         Montserrat_400Regular
     });
 
     const onRefresh = () => {
         setRefreshing(true);
-        loadFeedList();
+        loadFollowList();
     }
 
-    const loadFeedList = async () => {
-        console.log("load_feed_list")
-        fetch(`${API_URL}/get_users`, {
+    const loadFollowList = async () => {
+        fetch(`${API_URL}/getUserFollowList`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -55,7 +62,72 @@ const FeedScreen = (props) => {
                 if (res.status !== 200) {
                     console.log(res);
                 } else {
-                    setFeed(jsonRes.feed_list);
+                    user.follow_list = jsonRes.data[0].follow_list;
+                    dispatch(setUser(user));
+                    loadFeedList();
+                }
+            }
+            catch (err) {
+                console.log(err);
+            };
+        })
+        .catch(err => {
+            console.log(err);
+        });
+    }
+
+    const loadFeedList = async () => {
+        let loadList = [];
+        user.follow_list.map((item)=>{
+                loadList.push(item.name);
+        })
+
+        fetch(`${API_URL}/get_users`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({follow_list:loadList}),
+        })
+        .then(async res => { 
+            try {
+                const jsonRes = await res.json();
+                if (res.status !== 200) {
+                    console.log(res);
+                } else {
+                    const retData = jsonRes.data;
+                    console.log("feedlist")
+                    let tmp_list = [];
+                    user.follow_list.map((elem)=>{
+                        if(elem.type == 0) return;
+                        const tmp_item = retData.find(element => element.email == elem.name);
+                        let tmp_react_count = [0,0,0,0,0,0,0];
+                        tmp_item.reaction.map((item)=>{
+                            tmp_react_count[item.type] ++;
+                        });
+                        let max_react_count = 0;
+                        let max_type = 0;
+                        tmp_react_count.map((item,key)=>{
+                            if(max_react_count < item)
+                            {
+                                max_react_count = item;
+                                max_type = key;
+                            }
+                        })
+
+                        tmp_list.push({
+                            name:tmp_item.name,
+                            email:tmp_item.email,
+                            photo:tmp_item.photo,
+                            is_public:tmp_item.is_public,
+                            follow_list:tmp_item.follow_list,
+                            block_list:tmp_item.block_list,
+                            new:elem.new,
+                            reactType:max_type
+                        });
+                    })
+                
+                    setFeed(tmp_list);
                     setRefreshing(false);
                 }
             } catch (err) {
@@ -66,17 +138,21 @@ const FeedScreen = (props) => {
             console.log(err);
         });
     }
-    
-    
-    
-    
+
     //get followed user list
     useEffect(() => {
-        loadFeedList();
+        socket = io(SOCKET_URL);
+        socket.on("socket_follow_user", msg => {
+            console.log("socket on");
+            if(msg == user.email)
+                setNewMsg(true);
+       });
+        
+       loadFeedList();;
+
         const unsubscribe = props.navigation.addListener('didFocus', () => {
-            // loadFeedList();
-            console.log("didFocus");
-            loadFeedList();
+            setRefreshing(true);
+            loadFollowList();
         });
         return () => {
             unsubscribe;
@@ -104,7 +180,7 @@ const FeedScreen = (props) => {
                     //reload feed lit
                     user.photo = secure_url;
                     dispatch(setUser(user));
-                    loadFeedList();
+                    loadFollowList();
                     updateToast.current.hideToast(10);
                     defaultToast.current.showToast('Your picture has been updated with success');
                     
@@ -164,21 +240,75 @@ const FeedScreen = (props) => {
 
     //go to profile page
     const selectPerson = (item) => {
-        props.navigation.navigate('Profile', {
-            owner: item
-        });
+        if(item.is_public)
+        {
+            props.navigation.navigate('Profile', {
+                owner: item,
+                profile_type : 1
+            });
+        }
+        else{
+            // check accepted
+            user.follow_list.map((fitem) => {
+                if(fitem.name == item.email)
+                {
+                    props.navigation.navigate('Profile', {
+                        owner: item,
+                        profile_type : fitem.type
+                    });
+                }           
+            });
+        }
     }
 
     //render each profile
     const renderProfile = (item,key) => {
+        let curImgUrl = '';
+        switch(item.reactType){
+            case 1:
+                curImgUrl = require('../assets/reactions/1.png');
+                break;
+            case 2:
+                curImgUrl = require('../assets/reactions/2.png');
+                break;
+            case 3:
+                curImgUrl = require('../assets/reactions/3.png');
+                break;
+            case 4:
+                curImgUrl = require('../assets/reactions/4.png');
+                break;
+            case 5:
+                curImgUrl = require('../assets/reactions/5.png');
+                break;
+            case 6:
+                curImgUrl = require('../assets/reactions/6.png');
+                break;
+        }
         return(
             <TouchableOpacity key={key} style={key%3==1?styles.gallery_item_middle:styles.gallery_item} onPress={()=>selectPerson(item)}>
-                
-                <Image style={styles.photo} 
+                {(item.new && key > 0) && 
+                    <LinearGradient
+                        start={[0,1]}
+                        start={[0,0]}
+                        colors={['rgba(255, 204, 77, 1)', 'rgba(242, 20, 73, 0.2)']}
+                        style={styles.newPhotoContainer}>
+                            <View style={styles.photoBlackOverlay}>
+                                <Image style={[styles.photo,{opacity:0.25}]} 
+                                    source={{
+                                    uri: item.photo==''?default_photo:item.photo
+                                    }}>
+                                </Image>
+                                {item.reactType > 0 && <Image style={styles.emojiImg} source={curImgUrl}></Image>}
+                            </View>
+                        
+                    </LinearGradient>
+                }
+                {(!item.new || key ==0) && <Image style={styles.photo} 
                     source={{
                     uri: item.photo==''?default_photo:item.photo
                     }}>
-                </Image>
+                </Image>}
+                
                 {(item.new && key > 0) && <View style={styles.indicator_new}>
                     <Text style={styles.indicator_new_text}>NEW</Text>
                 </View>}
@@ -190,11 +320,54 @@ const FeedScreen = (props) => {
             </TouchableOpacity>
             
         )
+    };
+
+    const goProfile = () => {
+        props.navigation.navigate('Account',{title:user.name});
+    }
+    
+    const goSearch = () => {
+        props.navigation.navigate('Search');
+    }
+
+    const goNotification = () => {
+        setNewMsg(false);
+        user.noti_status = false;
+        dispatch(setUser(user));
+        props.navigation.navigate('Notification');
     }
 
     return (
         <View style={styles.feedContainer}>
-            <ScrollView refreshControl = {<RefreshControl refreshing={refreshing} onRefresh={()=>onRefresh()}/>}>
+            <View style={styles.header}>
+                {fontsLoaded && <Text style={styles.headerTitle}>
+                    Mirrer
+                </Text>}
+                <View style={styles.hrContainer}>
+                    
+                    <TouchableOpacity style={styles.menu} onPress={()=>goNotification()}>
+                        <SvgUri
+                            style={styles.menu_img}
+                            source={require('../assets/notification.svg')}
+                        />
+                        {newMsg && <View style={styles.newMsgCircle}>
+                            </View>}
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.menu} onPress={()=>goSearch()}>
+                        <SvgUri
+                            style={styles.menu_img}
+                            source={require('../assets/search.svg')}
+                        />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.menu} onPress={()=>goProfile()}>
+                        <SvgUri
+                            style={styles.menu_img}
+                            source={require('../assets/profile.svg')}
+                        />
+                    </TouchableOpacity>
+                </View>
+            </View>
+            <ScrollView style={styles.scrollContainer} refreshControl = {<RefreshControl refreshing={refreshing} onRefresh={()=>onRefresh()}/>}>
                 {fontsLoaded && 
                     <View style={styles.container}>
                         {
@@ -223,25 +396,37 @@ const FeedScreen = (props) => {
 
 const styles = StyleSheet.create({
     feedContainer:{
-        height:'100%',
+        flex:1,
+        paddingTop:25,
+        justifyContent:'space-between',
         backgroundColor:'white'
     },
-    menu:{
-        height:70,
-        justifyContent:'center',
-        alignItems:'flex-end'
+    emojiImg:{
+        width:30,
+        height:30,
+        marginTop:-90
+    },
+    newMsgCircle:{
+        width:6,
+        height:6,
+        marginTop:6,
+        borderRadius:50,
+        backgroundColor:'rgba(242, 20, 73, 1)'
     },
     menu_img:{
         width:24,
         height:24,
-        marginRight:17,
         justifyContent:'center',
         alignItems:'center'
     },
     header: {
-        width:'100%',
-        height:70,
-        paddingHorizontal:17
+        flexDirection:'row',
+        justifyContent:'space-between',
+        alignItems:'center',
+        width:windowWidth-48,
+        marginRight:24,
+        height:50,
+        marginLeft:24,
     },
     myToast:{
         width:'100%',
@@ -250,17 +435,23 @@ const styles = StyleSheet.create({
         backgroundColor:'#57D172'
     },
     container: {
-        paddingTop:25,
-        width: '100%', 
-        display: "flex", 
-        flexDirection: "row", 
-        flexWrap: "wrap",
+        paddingTop:10,
         paddingLeft:17,
         paddingRight:17,
         backgroundColor:'white',
-        fontFamily:'Montserrat',
-        fontStyle:'normal',
-        marginBottom:50
+        marginBottom:50,
+        flexDirection:'row',
+        flexWrap:'wrap'
+    },
+    scrollContainer:{
+        marginLeft:1,
+        flex:1
+    },
+    menu:{
+        height:50,
+        marginLeft:24,
+        justifyContent:'center',
+        alignItems:'center'
     },
     first_name:{
         textAlign:'center',
@@ -284,7 +475,7 @@ const styles = StyleSheet.create({
         // width:"100%",
         height:40,
         marginTop:-40,
-        backgroundColor:'#DD2E44',
+        backgroundColor:'rgba(0,0,0,0)',
         justifyContent:'center',
         alignItems:'center'
     },
@@ -293,14 +484,26 @@ const styles = StyleSheet.create({
         fontFamily:'Montserrat_700Bold',
     },
     indicator_new_text:{
-        color:'white',
-        fontFamily:'Montserrat_700Bold',
+        color:'rgba(255, 204, 77, 1)',
+        fontFamily:'Montserrat_900Black',
         fontSize:13
     },
     photo:{
         width:'100%',
-        height:164,
+        height:'100%',
         // resizeMode:'stretch'
+    },
+    photoBlackOverlay:{
+        width:'100%',
+        height:'100%',
+        backgroundColor:'rgba(0, 0, 0, 1)',
+        alignItems:'center'
+    },
+    newPhotoContainer:{
+        width:'100%',
+        padding:3,
+        alignItems:'center',
+        justifyContent:'center'
     },
     gallery_item:{
         width:"30%",
@@ -315,33 +518,15 @@ const styles = StyleSheet.create({
         marginTop:76
     },
     hrContainer:{
-        flexDirection:'row'
+        flexDirection:'row',
+        alignItems:'center'
+    },
+    headerTitle:{
+        fontFamily:'Montserrat_800ExtraBold',
+        fontSize:20,
+        lineHeight:24,
+        color:'black'
     }
 });
 
 export default FeedScreen;
-
-const goProfile = (screenProps) => {
-    screenProps.navigation.navigate('Account',{title:user.name});
-}
-
-const goSearch = (screenProps) => {
-    screenProps.navigation.navigate('Search');
-}
-
-FeedScreen['navigationOptions'] = props => ({
-    headerRight: () => <View style={styles.hrContainer}>
-                            <TouchableOpacity onPress={()=>goSearch(props)}>
-                                <SvgUri
-                                    style={styles.menu_img}
-                                    source={require('../assets/search.svg')}
-                                />
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={()=>goProfile(props)}>
-                                <SvgUri
-                                    style={styles.menu_img}
-                                    source={require('../assets/profile.svg')}
-                                />
-                            </TouchableOpacity>
-                        </View>
-})

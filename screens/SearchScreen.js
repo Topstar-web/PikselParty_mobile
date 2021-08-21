@@ -18,7 +18,6 @@ let user = null;
 
 const SearchScreen = (props) => {
     user = useSelector((state)=>state.user.user);
-    console.log(user);
     const [data,setData] = useState({
         search:'',
         userList:[]
@@ -83,34 +82,10 @@ const SearchScreen = (props) => {
     };
 
     // on tap on list
-    const onTapUser = (email) => {
-        setLoadingAlert(true);
-        fetch(`${API_URL}/getUser`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({email:email})
-        })
-        .then(async res => { 
-            try {
-                const jsonRes = await res.json();
-                if (res.status !== 200) {
-                } else {
-                    const tapUser = jsonRes.data;
-                    setLoadingAlert(false);
-
-                    props.navigation.navigate('Profile', {
-                        owner: tapUser[0]
-                    });
-                }
-                
-            } catch (err) {
-                console.log(err);
-            };
-        })
-        .catch(err => {
-            console.log(err);
+    const onTapUser = (item) => {
+        props.navigation.navigate('Profile', {
+            owner: item,
+            profile_type : item.is_public? 1: 0
         });
     };
 
@@ -124,10 +99,10 @@ const SearchScreen = (props) => {
                 style={styles.searchUserListContainer}
                 data={data.userList}
                 renderItem={({ item }) => {
-                    if(item.name && item.name.toLowerCase().includes(data.search.toLowerCase()) && item.email != user.email && !blockList.includes(item.email))
+                    if(data.search != '' && item.name && item.name.toLowerCase().includes(data.search.toLowerCase()) && item.email != user.email && (!blockList || (!blockList.includes(item.email))))
                     {
                         return (
-                            <TouchableOpacity style={styles.historyItemContainer} onPress={()=>onTapUser(item.email)}>
+                            <TouchableOpacity style={styles.historyItemContainer} onPress={()=>onTapUser(item)}>
                                 <Image style={styles.photo} 
                                     source={{
                                         uri: item.photo==''?default_photo:item.photo

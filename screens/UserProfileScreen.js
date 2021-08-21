@@ -29,7 +29,7 @@ const UserProfileScreen = (props) => {
     const defaultToast = useRef(null);
 
     const [userName,setUserName] = useState(user.name);
-    const [userType,setUserType] = useState(user.is_public);
+    const [userType,setUserType] = useState(!user.is_public);
 
     const onSave = () => {
         fetch(`${API_URL}/saveUserProfile`, {
@@ -40,14 +40,14 @@ const UserProfileScreen = (props) => {
             body: JSON.stringify({
                 email:user.email,
                 userName:userName.toUpperCase(),
-                userType:userType
+                userType:!userType
             })
         })
         .then(async res => { 
             try {
                 // const jsonRes = await res.json();
                 user.name = userName.toUpperCase();
-                user.is_public = userType;
+                user.is_public = !userType;
                 dispatch(setUser(user));
                 console.log(res.status);
                 if (res.status !== 200) {

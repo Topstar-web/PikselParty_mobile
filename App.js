@@ -15,6 +15,7 @@ import GeneralScreen from './screens/GeneralScreen';
 import BlockListScreen from './screens/BlockListScreen';
 import ReactionHistoryScreen from './screens/ReactionHistoryScreen';
 import SearchScreen from './screens/SearchScreen';
+import NotificationScreen from './screens/NotificationScreen';
 import { Provider } from 'react-redux';
 
 import configureStore from './store/configureStore';
@@ -45,7 +46,7 @@ const AppNavigator = createStackNavigator({
   Feed: {
     screen: FeedScreen,
     navigationOptions: {
-      headerShown:true,
+      headerShown:false,
       title:'Mirrer',
       headerStyle:{
         elevation: 0, // remove shadow on Android
@@ -65,6 +66,12 @@ const AppNavigator = createStackNavigator({
   },
   Profile:{
     screen: ProfileScreen,
+    navigationOptions: {
+      headerShown:false
+    }
+  },
+  Notification:{
+    screen: NotificationScreen,
     navigationOptions: {
       headerShown:false
     }

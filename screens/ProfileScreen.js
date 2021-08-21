@@ -1,5 +1,5 @@
 import React, { useState , useRef,useEffect} from 'react';
-import { View, Image, Text, StyleSheet, TouchableOpacity, ScrollView} from 'react-native';
+import { View, Image, Text, RefreshControl, StyleSheet, TouchableOpacity, ScrollView} from 'react-native';
 import {SingleImage} from "rn-instagram-image";
 import AwesomeAlert from 'react-native-awesome-alerts';
 import SvgUri from 'react-native-svg-uri';
@@ -7,7 +7,8 @@ import SwipeDownModal from 'react-native-swipe-down';
 import Toast from './MyToast';
 
 import { useSelector , useDispatch } from 'react-redux';
-import { setUser } from '../store/actions/index'
+import { setUser } from '../store/actions/index';
+import io from "socket.io-client";
 import {
     useFonts,
     Montserrat_600SemiBold,
@@ -16,26 +17,28 @@ import {
     Montserrat_400Regular
   } from '@expo-google-fonts/montserrat';
 
-import {API_URL, default_photo, windowHeight, windowWidth} from '../config/config';
-
-let user = null;
-let owner = null;
+import {API_URL, SOCKET_URL,default_photo, windowHeight, windowWidth} from '../config/config';
 
 const ProfileScreen = (props) => {
-    user = useSelector((state) => state.user.user);
-    console.log(user);
+    let user = useSelector((state) => state.user.user);
     const dispatch = useDispatch();
     
-    owner = props.navigation.state.params.owner; //profile owner
-    
+    let owner = props.navigation.state.params.owner; //profile owner
+
     const defaultToast = useRef(null);
     const [showModal,setShowModal] = useState(false);
+
+    const [refreshing, setRefreshing] = useState(true);
 
     const [loadingAlert,setLoadingAlert] = useState(false);
 
     const [fStatus,setFStatus] = useState(false);
 
-    const [isBlock,setIsBlock] = useState(false);
+    const [ptype,setPtype] = useState(props.navigation.state.params.profile_type);
+
+    const [acceptStatus,setAcceptStatus] = useState(false);
+
+    let socket = null;
 
     const [flagStatus,setFlagStatus] = useState({
         fUser:0,
@@ -55,9 +58,63 @@ const ProfileScreen = (props) => {
 
     //get Reaction Data
     useEffect(() => {
-        setLoadingAlert(true);
         getReaction();
+        setFollowFlow(user.follow_list);
     }, []);
+
+    const onRefresh = () => {
+        setRefreshing(true);
+        loadFollowList();
+    }
+
+    const setFollowFlow = (f_list) => {
+        setFStatus(false);
+        setPtype(owner.is_public);
+        f_list.map((item) => {
+            if(item.name == owner.email)
+            {
+                console.log("flow match");
+                setFStatus(true);
+                setPtype(item.type);
+                
+                if(item.new)
+                {
+                    item.new = false;
+                    removeNewStatus()
+                }
+                return;
+            }           
+        });
+    }
+
+    const loadFollowList = async () => {
+        fetch(`${API_URL}/getUserFollowList`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({email:user.email}),
+        })
+        .then(async res => { 
+            try {
+                const jsonRes = await res.json();
+                if (res.status !== 200) {
+                    console.log(res);
+                } else {
+                    user.follow_list = jsonRes.data[0].follow_list;
+                    dispatch(setUser(user));
+                    setFollowFlow(jsonRes.data[0].follow_list);
+                    getReaction();
+                }
+            }
+            catch (err) {
+                console.log(err);
+            }
+        })
+        .catch(err => {
+            console.log(err);
+        });
+    }
 
     // set new status false
     const removeNewStatus = () => {
@@ -101,24 +158,14 @@ const ProfileScreen = (props) => {
                     const reactionList = jsonRes.data;
                     flagStatus.fUser = jsonRes.fUser;
                     flagStatus.fCont = jsonRes.fCont;
+                    for (let index = 1; index < 7; index++) {
+                        rCnt[index] = 0;
+                    }
                     reactionList.map((item)=>{
                         rCnt[item.type] = rCnt[item.type] + 1;
                     });
                     setValue(value + 1);
-
-                    user.follow_list.map((item) => {
-                        if(item.name == owner.email)
-                        {
-                            setFStatus(true);
-                            if(item.new)
-                            {
-                                item.new = false;
-                                removeNewStatus()
-                            }
-                        }           
-                    });
-
-                    setLoadingAlert(false);
+                    setRefreshing(false);
                 }
                 
             } catch (err) {
@@ -222,7 +269,9 @@ const ProfileScreen = (props) => {
             },
             body: JSON.stringify({
                 email:user.email,
-                add_email:owner.email
+                add_email:owner.email,
+                name:user.name,
+                add_type:owner.is_public
             }),
         })
         .then(async res => { 
@@ -231,10 +280,19 @@ const ProfileScreen = (props) => {
                 if (res.status !== 200) {
                 } else {
                     setShowModal(false);
-                    defaultToast.current.showToast('You have followed '+owner.name);
-                    user.follow_list.push({name:owner.email,new:false});
+                    user.follow_list.push({name:owner.email,new:false,fdate:new Date(),type:owner.is_public?1:0});
+
                     dispatch(setUser(user));
                     setFStatus(true);
+
+                    //send notification socket
+                    socket = io(SOCKET_URL);
+                    socket.emit('socket_follow_user',owner.email);
+                    
+                    if(owner.is_public)
+                        defaultToast.current.showToast('You have followed '+owner.name);
+                    else 
+                        defaultToast.current.showToast('You have sent request to '+owner.name);
                 }
             } catch (err) {
                 console.log(err);
@@ -264,7 +322,14 @@ const ProfileScreen = (props) => {
                 } else {
                     setShowModal(false);
                     defaultToast.current.showToast('You have unfollowed '+owner.name);
+                    const tIndex = user.follow_list.findIndex(element => element.name == owner.email);
+                    user.follow_list.splice(tIndex,1);
+                    dispatch(setUser(user));
                     setFStatus(false);
+
+                    setTimeout(() => {
+                        goBack();
+                    }, 1500);  
                 }
             } catch (err) {
                 console.log(err);
@@ -301,7 +366,7 @@ const ProfileScreen = (props) => {
                     setFStatus(false);
                     setTimeout(() => {
                         goBack();
-                    }, 3000);  
+                    }, 1500);  
                 }
             } catch (err) {
                 console.log(err);
@@ -334,8 +399,8 @@ const ProfileScreen = (props) => {
                     defaultToast.current.showToast('You have Flagged '+owner.name);
                     setTimeout(() => {
                         goBack();
-                    }, 3000);  
-                    setFStatus(false);
+                    }, 1500);  
+                    // setFStatus(false);
                 }
             } catch (err) {
                 console.log(err);
@@ -368,8 +433,7 @@ const ProfileScreen = (props) => {
                     defaultToast.current.showToast('You have Flagged '+owner.name+'\'s content');
                     setTimeout(() => {
                         goBack();
-                    }, 3000);  
-                    setFStatus(false);
+                    }, 1500);  
                 }
             } catch (err) {
                 console.log(err);
@@ -381,16 +445,15 @@ const ProfileScreen = (props) => {
     };
 
     return (
-        <View style={styles.container} contentContainerStyle={{
-            alignItems:'center'}}>
+        <ScrollView style={styles.container} refreshControl = {<RefreshControl refreshing={refreshing} onRefresh={()=>onRefresh()}/>}>
             <View style={styles.header}>
-                <TouchableOpacity style={styles.menu} onPress={() => goBack(props)}>
+                <TouchableOpacity style={styles.menu} onPress={() => goBack()}>
                     <SvgUri
                         style={styles.menu_img}
                         source={require('../assets/feed.svg')}
                     />
                 </TouchableOpacity>
-                    {user.email == owner.email && <TouchableOpacity style={styles.menu} onPress={() => goUserProfile(props)}>
+                    {user.email == owner.email && <TouchableOpacity style={styles.menu} onPress={() => goUserProfile()}>
                     <SvgUri
                         style={styles.menu_img}
                         source={require('../assets/menu.svg')}
@@ -405,12 +468,12 @@ const ProfileScreen = (props) => {
             </View>
             {renderName(owner.name)}
             <View style={styles.photoContainer}>
-                    {!isBlock && <SingleImage imageSource={{uri: owner.photo==''?default_photo:owner.photo}}></SingleImage>}
-                    {isBlock && <Image style={[styles.photo,{opacity:0.05}]} source ={{uri: owner.photo==''?default_photo:owner.photo}}/>}
+                    {ptype == 1 && <SingleImage imageSource={{uri: owner.photo==''?default_photo:owner.photo}}></SingleImage>}
+                    {ptype == 0 && <Image style={[styles.photo,{opacity:0.05}]} source ={{uri: owner.photo==''?default_photo:owner.photo}}/>}
                     {/* <ImageViewer style={styles.photo} imageUrls={[{url:owner.photo==''?default_photo:owner.photo}]}/> */}
-                    {isBlock && <Text style={styles.blockedText}>User not available</Text>}
+                    {ptype == 0 && <Text style={styles.blockedText}>THIS PROFILE IS PRIVATE</Text>}
             </View>
-            {!isBlock && <View style={styles.reactContainer}>
+            {ptype == 1 && <View style={styles.reactContainer}>
                 <View style={styles.emojiLineContainer}>
                     <TouchableOpacity style={styles.emojiContainer} onPress={()=>addReaction(1)}>
                         {rCnt[1] > 0 && <Image style={styles.emojiImg} source={require('../assets/reactions/1.png')} />}
@@ -447,11 +510,14 @@ const ProfileScreen = (props) => {
                 </View>
             </View>
             }
-            {/* {isBlock && <View style={styles.buttonContainer}>
-                <TouchableOpacity style={styles.followButton}>
-                    <Text style={styles.followButtonText}>{fStatus?'Unfollow':'Follow'}</Text>
-                </TouchableOpacity>
-            </View>} */}
+            {ptype == 0 && <View style={styles.buttonContainer}>
+                {fStatus && <View style={styles.followButton_sr}>
+                    <Text style={styles.followButtonText_sr}>SENT REQUEST...</Text>
+                </View>}
+                {!fStatus && <TouchableOpacity style={styles.followButton} onPress={()=>fStatus?removeFollow():addFollow()}>
+                    <Text style={styles.followButtonText}>Follow</Text>
+                </TouchableOpacity>}
+            </View>}
             <SwipeDownModal
                 modalVisible={showModal}
                 //if you don't pass HeaderContent you should pass marginTop in view of ContentModel to Make modal swipeable
@@ -494,7 +560,7 @@ const ProfileScreen = (props) => {
                 closeOnTouchOutside={false}
                 closeOnHardwareBackPress={false}
             />
-       </View>
+       </ScrollView>
     );
 };
 
@@ -508,7 +574,7 @@ const styles = StyleSheet.create({
         width:windowWidth,
         alignItems:'center',
         justifyContent:'center',
-        height:'24%'
+        flex:1
     },
     followButtonText:{
         color:'white',
@@ -519,6 +585,20 @@ const styles = StyleSheet.create({
         alignItems:'center',
         justifyContent:'center',
         backgroundColor:'rgba(221, 46, 68, 1)',
+        width:213,
+        height:45
+    },
+    followButtonText_sr:{
+        color:'black',
+        fontSize:18,
+        fontFamily:'Montserrat_700Bold'
+    },
+    followButton_sr:{
+        alignItems:'center',
+        justifyContent:'center',
+        backgroundColor:'white',
+        borderWidth:1,
+        borderColor:'rgba(196, 196, 196, 1)',
         width:213,
         height:45
     },
@@ -585,7 +665,7 @@ const styles = StyleSheet.create({
     reactContainer:{
         width:'100%',
         marginTop:50,
-        height:200,
+        flex:1,
         paddingHorizontal:'10%',
         backgroundColor:'white'
     },
@@ -633,11 +713,10 @@ const styles = StyleSheet.create({
     },
     container: {
         paddingTop:20,
-        width: '100%',
-        height:windowHeight,
         display: "flex", 
         flexDirection: "row", 
         flexWrap: "wrap",
+        flex:1,
         backgroundColor:'white'
     },
     header: {
@@ -660,7 +739,8 @@ const styles = StyleSheet.create({
         alignItems:'center'
     },
     photo:{
-        // resizeMode:'stretch'
+        width:'100%',
+        height:windowHeight - 300
     },
     photoContainer:{
         width:'100%',
