@@ -1,8 +1,9 @@
 import React, { useState ,useRef, useEffect} from 'react';
 import { View, RefreshControl, ScrollView,  Image, Text, StyleSheet, TouchableOpacity} from 'react-native';
 
-import * as ImagePicker from 'expo-image-picker';
-import AwesomeAlert from 'react-native-awesome-alerts';
+// import * as ImagePicker from 'expo-image-picker';
+import * as ImagePicker from 'react-native-image-crop-picker';
+
 import SvgUri from 'react-native-svg-uri';
 import Toast from './MyToast';
 import { useSelector , useDispatch } from 'react-redux';
@@ -26,7 +27,7 @@ const FeedScreen = (props) => {
     user = useSelector((state) => state.user.user);
     const dispatch = useDispatch();
     const [feed , setFeed] = useState([]); //followed user list
-    const [loadingAlert,setLoadingAlert] = useState(false);
+    
     const defaultToast = useRef(null);
     const updateToast = useRef(null);
     const [refreshing, setRefreshing] = useState(true);
@@ -196,33 +197,41 @@ const FeedScreen = (props) => {
 
     //open image file
     const pickImage = async () => {
-        let result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          allowsEditing: true,
-          aspect: [4, 5], 
-          quality: 1,
-          base64:true,
-        });
+        // let result = await ImagePicker.launchImageLibraryAsync({
+        //   mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        //   allowsEditing: true,
+        //   aspect: [4, 5], 
+        //   quality: 1,
+        //   base64:true,
+        // });
     
-        if (!result.cancelled) {
-            let base64Img = `data:image/jpg;base64,${result.base64}`
-            let data = {
-                "file": base64Img,
-                "upload_preset": upload_preset,
-            }
+        // if (!result.cancelled) {
+        //     let base64Img = `data:image/jpg;base64,${result.base64}`
+        //     let data = {
+        //         "file": base64Img,
+        //         "upload_preset": upload_preset,
+        //     }
             
-            updateToast.current.showToast("wait...","UPDATING",1000000);
-            fetch(upload_url, {
-                body: JSON.stringify(data),
-                headers: {
-                  'content-type': 'application/json'
-                },
-                method: 'POST',
-              }).then(async r => {
-                  let data = await r.json();
-                  updateMyPhoto(data.secure_url);
-            }).catch(err=>console.log(err))
-        }
+        //     updateToast.current.showToast("wait...","UPDATING",1000000);
+        //     fetch(upload_url, {
+        //         body: JSON.stringify(data),
+        //         headers: {
+        //           'content-type': 'application/json'
+        //         },
+        //         method: 'POST',
+        //       }).then(async r => {
+        //           let data = await r.json();
+        //           updateMyPhoto(data.secure_url);
+        //     }).catch(err=>console.log(err))
+        // }
+        await ImagePicker.openCamera({
+            width: 300,
+            height: 400,
+            cropping: true,
+          })
+            .then(image => {
+            })
+            .finally(close);
       };
 
     //render full name to first & last
@@ -378,15 +387,6 @@ const FeedScreen = (props) => {
                         
                     </View> 
                 }
-                
-                <AwesomeAlert
-                    show={loadingAlert}
-                    showProgress={true}
-                    title="Processing"
-                    message="Wait a moment..."
-                    closeOnTouchOutside={false}
-                    closeOnHardwareBackPress={false}
-                />
         </ScrollView>
         <Toast ref = {defaultToast} backgroundColor = "#57D172" style={styles.myToast}/>
         <Toast ref = {updateToast} textColor="#000000" backgroundColor = "#E5E5E5" style={styles.myToast}/>

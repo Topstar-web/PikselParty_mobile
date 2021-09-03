@@ -163,23 +163,22 @@ const NotificationScreen = (props) => {
         var timeDiff = item.timeDiff / 1000;
         
         var time_str = "";
-        if(timeDiff < 60)
-            time_str = " just now";
-        
         if(timeDiff > (3600 * 24))
         {
-            time_str = " " + parseInt(timeDiff / 3600 / 24) + " days";
+            time_str = " " + parseInt(timeDiff / 3600 / 24) + " days ago";
             timeDiff = timeDiff % (3600 * 24);
         }
             
-        if(timeDiff > 3600)
+        else if(timeDiff > 3600)
         {
-            time_str += " " + parseInt(timeDiff / 3600) + " hours";
+            time_str += " " + parseInt(timeDiff / 3600) + " hours ago";
             timeDiff = timeDiff % 3600;
         }
             
-        if(timeDiff > 60)
+        else if(timeDiff > 60)
             time_str += " " + parseInt(timeDiff / 60) + " mins";
+        else
+            time_str = " just now";
         
         return (
             <View key={key} style={{
